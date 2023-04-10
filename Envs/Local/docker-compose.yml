@@ -1,0 +1,39 @@
+version: '3.9'
+
+services:
+  app:
+    container_name: fastapi-app
+    build:
+      context: ../../
+      dockerfile: ${DOCKERFILE_PATH}
+    image: &app app
+    restart: always
+    command: ${START_APP}
+    env_file: &envfile
+      - ../../Envs/Local/variables.env
+    ports:
+      - 8000:8000
+    volumes:
+      - ../../main.py:/App/main.py
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.chat.rule=Host(`${PROJECT_URL}`)"
+      - "traefik.http.routers.chat.service=chat"
+      - "traefik.http.services.chat.loadbalancer.server.port=8000"
+      - "traefik.http.routers.chat.entrypoints=web"
+
+  traefik:
+    container_name: traefik
+    image: ${TRAEFIK}
+    ports:
+      - 80:80
+      - 8080:8080
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${TRAEFIK_YML}:/etc/traefik/traefik.yml
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.proxy.rule=Host(`${TRAEFIK_URL}`)"
+      - "traefik.http.routers.proxy.entrypoints=web"
+      - "traefik.http.routers.proxy.service=api@internal"
+      - "traefik.http.services.proxy.loadbalancer.server.port=8080"
